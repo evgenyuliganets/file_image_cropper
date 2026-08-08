@@ -79,8 +79,10 @@ jobs:
         working-directory: example
         run: flutter pub get
 
-      - name: Build desktop example
+      - name: Build desktop example with prebuilt native library
         working-directory: example
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: ${{ matrix.flutter_command }}
 
   android-build:
@@ -109,8 +111,10 @@ jobs:
         working-directory: example
         run: flutter pub get
 
-      - name: Build Android example
+      - name: Build Android example with prebuilt native libraries
         working-directory: example
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: flutter build apk --debug
 
       - name: Enable KVM
@@ -121,6 +125,8 @@ jobs:
 
       - name: Run native crop smoke on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         with:
           api-level: 35
           target: google_apis
@@ -147,16 +153,22 @@ jobs:
         working-directory: example
         run: flutter pub get
 
-      - name: Build iOS device example without signing
+      - name: Build iOS device example with prebuilt native library
         working-directory: example
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: flutter build ios --debug --no-codesign
 
-      - name: Build iOS simulator example
+      - name: Build iOS simulator example with prebuilt native library
         working-directory: example
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: flutter build ios --simulator --debug
 
       - name: Run native crop smoke on iOS simulator
         working-directory: example
+        env:
+          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: |
           DEVICE_ID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')
           test -n "$DEVICE_ID"
