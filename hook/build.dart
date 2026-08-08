@@ -1,24 +1,80 @@
 import 'dart:io';
 
-import 'package:native_toolchain_c/native_toolchain_c.dart';
-import 'package:native_toolchain_rust/native_toolchain_rust.dart';
-import 'package:logging/logging.dart';
+import 'package:code_assets/code_assets.dart';
+import 'package:file_image_cropper/src/prebuilt/prebuilt_asset.dart';
 import 'package:hooks/hooks.dart';
+import 'package:logging/logging.dart';
+import 'package:native_toolchain_rust/native_toolchain_rust.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
-    final packageName = input.packageName;
+    if (!input.config.buildCodeAssets) {
+      return;
+    }
+
+    final buildFromSourceValue = input.userDefines['build_from_source'];
+    if (buildFromSourceValue is! bool?) {
+      throw const FormatException(
+        'hooks.user_defines.file_image_cropper.build_from_source must be a '
+        'boolean or omitted.',
+      );
+    }
+
+    final customLibrary = input.userDefines.path('native_library');
+    if (customLibrary != null && buildFromSourceValue == true) {
+      throw const FormatException(
+        'native_library and build_from_source cannot be enabled together.',
+      );
+    }
+
+    if (customLibrary != null) {
+      final file = File.fromUri(customLibrary);
+      if (!await file.exists()) {
+        throw ArgumentError.value(
+          customLibrary,
+          'native_library',
+          'The configured native library does not exist.',
+        );
+      }
+      output.dependencies.add(customLibrary);
+      output.assets.code.add(
+        CodeAsset(
+          package: input.packageName,
+          name: nativeImageEngineAssetName,
+          linkMode: DynamicLoadingBundled(),
+          file: customLibrary,
+        ),
+      );
+      return;
+    }
+
+    if (buildFromSourceValue != true) {
+      final code = input.config.code;
+      final asset = prebuiltAssetFor(
+        code.targetOS,
+        code.targetArchitecture,
+        iOSSdk: code.targetOS == OS.iOS ? code.iOS.targetSdk : null,
+      );
+      final file = await downloadPrebuiltAsset(
+        asset,
+        Directory.fromUri(input.outputDirectoryShared),
+      );
+      output.assets.code.add(
+        CodeAsset(
+          package: input.packageName,
+          name: nativeImageEngineAssetName,
+          linkMode: DynamicLoadingBundled(),
+          file: file.uri,
+        ),
+      );
+      return;
+    }
+
     final logger = Logger.root
       ..level = .WARNING
       ..onRecord.listen((record) => stderr.writeln(record.message));
-    final cbuilder = CBuilder.library(
-      name: packageName,
-      assetName: '${packageName}_bindings_generated.dart',
-      sources: ['src/$packageName.c'],
-    );
-    await cbuilder.run(input: input, output: output, logger: logger);
     await RustBuilder(
-      assetName: 'src/ffi/native_image_engine.dart',
-    ).run(input: input, output: output);
+      assetName: nativeImageEngineAssetName,
+    ).run(input: input, output: output, logger: logger);
   });
 }

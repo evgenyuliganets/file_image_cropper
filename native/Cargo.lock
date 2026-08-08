@@ -82,6 +82,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_image_cropper_native"
+version = "0.2.0"
+dependencies = [
+ "jpeg-rusturbo",
+ "libc",
+ "png",
+ "rayon",
+ "webp",
+ "zune-jpeg",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -158,18 +170,6 @@ checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
  "simd-adler32",
-]
-
-[[package]]
-name = "native"
-version = "0.1.0"
-dependencies = [
- "jpeg-rusturbo",
- "libc",
- "png",
- "rayon",
- "webp",
- "zune-jpeg",
 ]
 
 [[package]]

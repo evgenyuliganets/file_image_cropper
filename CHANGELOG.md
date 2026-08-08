@@ -1,3 +1,14 @@
+## 0.2.0
+
+- Added verified prebuilt Rust libraries for Android, iOS, Linux, macOS, and
+  Windows so application builds no longer require Rust by default.
+- Added SHA-256 validation, shared build-cache reuse, bounded downloads, and
+  atomic replacement for downloaded native assets.
+- Added an explicit source-build fallback and a custom native-library override
+  for development and controlled build environments.
+- Removed the unused C package template and its generated bindings from the
+  build pipeline.
+
 ## 0.1.0
 
 - Added file-first JPEG, PNG, and static WebP inspection and processing.

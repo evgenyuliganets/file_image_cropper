@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use native::image_info::{ImageFormat, inspect_path};
+use file_image_cropper_native::image_info::{ImageFormat, inspect_path};
 
 fn fixture(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

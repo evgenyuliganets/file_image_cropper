@@ -1,0 +1,274 @@
+name: Prebuilt native libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: GitHub release tag for the native asset set
+        required: true
+        default: native-v0.2.0
+  push:
+    tags:
+      - native-v*
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTUP_TOOLCHAIN: 1.97.1
+
+jobs:
+  android:
+    name: Android ${{ matrix.architecture }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: arm
+            rust_target: armv7-linux-androideabi
+            clang_target: armv7a-linux-androideabi
+            asset_name: libfile_image_cropper_native_android_arm.so
+          - architecture: arm64
+            rust_target: aarch64-linux-android
+            clang_target: aarch64-linux-android
+            asset_name: libfile_image_cropper_native_android_arm64.so
+          - architecture: x64
+            rust_target: x86_64-linux-android
+            clang_target: x86_64-linux-android
+            asset_name: libfile_image_cropper_native_android_x64.so
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779
+        with:
+          ndk-version: r28c
+
+      - name: Set up Rust target
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup target add "${{ matrix.rust_target }}" --toolchain "$RUSTUP_TOOLCHAIN"
+
+      - name: Build release library
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          linker="$toolchain/bin/${{ matrix.clang_target }}24-clang"
+          env_key="${{ matrix.rust_target }}"
+          env_key="${env_key//-/_}"
+          cargo_key="${{ matrix.rust_target }}"
+          cargo_key="${cargo_key//-/_}"
+          cargo_key="${cargo_key^^}"
+          export "CC_${env_key}=$linker"
+          export "AR_${env_key}=$toolchain/bin/llvm-ar"
+          export "CARGO_TARGET_${cargo_key}_LINKER=$linker"
+          export RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384"
+          cargo build --locked --release \
+            --manifest-path native/Cargo.toml \
+            --target "${{ matrix.rust_target }}"
+          mkdir -p artifacts
+          cp "native/target/${{ matrix.rust_target }}/release/libfile_image_cropper_native.so" \
+            "artifacts/${{ matrix.asset_name }}"
+
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.architecture }}
+          path: artifacts/${{ matrix.asset_name }}
+          if-no-files-found: error
+
+  linux:
+    name: Linux ${{ matrix.architecture }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            rust_target: x86_64-unknown-linux-gnu
+            asset_name: libfile_image_cropper_native_linux_x64.so
+          - architecture: arm64
+            rust_target: aarch64-unknown-linux-gnu
+            asset_name: libfile_image_cropper_native_linux_arm64.so
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install ARM64 cross compiler
+        if: matrix.architecture == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Set up Rust target
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup target add "${{ matrix.rust_target }}" --toolchain "$RUSTUP_TOOLCHAIN"
+
+      - name: Build release library
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.architecture }}" == "arm64" ]]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+            export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+            export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+          fi
+          cargo build --locked --release \
+            --manifest-path native/Cargo.toml \
+            --target "${{ matrix.rust_target }}"
+          mkdir -p artifacts
+          cp "native/target/${{ matrix.rust_target }}/release/libfile_image_cropper_native.so" \
+            "artifacts/${{ matrix.asset_name }}"
+
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.architecture }}
+          path: artifacts/${{ matrix.asset_name }}
+          if-no-files-found: error
+
+  apple:
+    name: ${{ matrix.platform }} ${{ matrix.architecture }}
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macOS
+            architecture: arm64
+            rust_target: aarch64-apple-darwin
+            asset_name: libfile_image_cropper_native_macos_arm64.dylib
+          - platform: macOS
+            architecture: x64
+            rust_target: x86_64-apple-darwin
+            asset_name: libfile_image_cropper_native_macos_x64.dylib
+          - platform: iOS device
+            architecture: arm64
+            rust_target: aarch64-apple-ios
+            asset_name: libfile_image_cropper_native_ios_arm64_iphoneos.dylib
+          - platform: iOS simulator
+            architecture: arm64
+            rust_target: aarch64-apple-ios-sim
+            asset_name: libfile_image_cropper_native_ios_arm64_iphonesimulator.dylib
+          - platform: iOS simulator
+            architecture: x64
+            rust_target: x86_64-apple-ios
+            asset_name: libfile_image_cropper_native_ios_x64_iphonesimulator.dylib
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Rust target
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup target add "${{ matrix.rust_target }}" --toolchain "$RUSTUP_TOOLCHAIN"
+
+      - name: Build release library
+        shell: bash
+        run: |
+          set -euo pipefail
+          export MACOSX_DEPLOYMENT_TARGET=11.0
+          export IPHONEOS_DEPLOYMENT_TARGET=13.0
+          cargo build --locked --release \
+            --manifest-path native/Cargo.toml \
+            --target "${{ matrix.rust_target }}"
+          mkdir -p artifacts
+          cp "native/target/${{ matrix.rust_target }}/release/libfile_image_cropper_native.dylib" \
+            "artifacts/${{ matrix.asset_name }}"
+
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-${{ matrix.rust_target }}
+          path: artifacts/${{ matrix.asset_name }}
+          if-no-files-found: error
+
+  windows:
+    name: Windows ${{ matrix.architecture }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            msvc_architecture: x64
+            rust_target: x86_64-pc-windows-msvc
+            asset_name: file_image_cropper_native_windows_x64.dll
+          - architecture: arm64
+            msvc_architecture: amd64_arm64
+            rust_target: aarch64-pc-windows-msvc
+            asset_name: file_image_cropper_native_windows_arm64.dll
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_architecture }}
+
+      - name: Set up Rust target
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal
+          rustup target add "${{ matrix.rust_target }}" --toolchain $env:RUSTUP_TOOLCHAIN
+
+      - name: Build release library
+        shell: pwsh
+        run: |
+          cargo build --locked --release `
+            --manifest-path native/Cargo.toml `
+            --target "${{ matrix.rust_target }}"
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item `
+            "native/target/${{ matrix.rust_target }}/release/file_image_cropper_native.dll" `
+            "artifacts/${{ matrix.asset_name }}"
+
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.architecture }}
+          path: artifacts/${{ matrix.asset_name }}
+          if-no-files-found: error
+
+  release:
+    name: Publish native asset release
+    needs: [android, linux, apple, windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: assets
+
+      - name: Generate SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd assets
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' \
+            | sort \
+            | while read -r file; do sha256sum "$file"; done \
+            > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          name: Native libraries ${{ inputs.release_tag || github.ref_name }}
+          body: Prebuilt native libraries consumed by the file_image_cropper build hook.
+          files: assets/*
+          fail_on_unmatched_files: true

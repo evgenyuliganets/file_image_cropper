@@ -1,14 +1,14 @@
 use std::env;
 use std::path::PathBuf;
 
-use native::codecs::jpeg::{DEFAULT_BACKGROUND, DEFAULT_QUALITY};
-use native::crop::{AspectMismatchPolicy, CropRegion};
-use native::filesystem::OutputTarget;
-use native::pipeline::{
+use file_image_cropper_native::codecs::jpeg::{DEFAULT_BACKGROUND, DEFAULT_QUALITY};
+use file_image_cropper_native::crop::{AspectMismatchPolicy, CropRegion};
+use file_image_cropper_native::filesystem::OutputTarget;
+use file_image_cropper_native::pipeline::{
     FileCropRequest, FileProcessTimings, OutputCodec, process_image_file_profiled,
 };
-use native::pixel::PixelLimits;
-use native::resize::ResizeFilter;
+use file_image_cropper_native::pixel::PixelLimits;
+use file_image_cropper_native::resize::ResizeFilter;
 
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();

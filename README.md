@@ -14,6 +14,44 @@ Rust native engine while the Flutter UI isolate remains responsive.
 
 Web is not supported.
 
+## Native build model
+
+Application builds download one precompiled Rust library matching the target
+platform and architecture. The build hook verifies its embedded SHA-256 digest
+before Flutter bundles it and reuses the verified file from Flutter's shared
+build cache on later builds. Package consumers therefore do not need Rust,
+`rustup`, Cargo, or a Rust cross-compilation toolchain.
+
+Flutter still needs its normal platform toolchain: the Android SDK/NDK for an
+Android app, Xcode for an Apple app, Visual Studio Build Tools for Windows, or
+the standard Linux desktop build dependencies. These are Flutter requirements,
+not additional requirements introduced by this package.
+
+Maintainers and source-build environments can opt out of the download in the
+root application's `pubspec.yaml`:
+
+```yaml
+hooks:
+  user_defines:
+    file_image_cropper:
+      build_from_source: true
+```
+
+That mode uses the pinned Rust toolchain and requires Rust plus the relevant
+cross-compilation tools. A previously built library can instead be supplied
+with an absolute or app-relative path:
+
+```yaml
+hooks:
+  user_defines:
+    file_image_cropper:
+      native_library: tool/native/file_image_cropper_native.dll
+```
+
+`native_library` and `build_from_source` are mutually exclusive. Prebuilt
+libraries are published as a separate GitHub Release for each package version;
+the package itself stays small and each build downloads only its target asset.
+
 ## Supported formats
 
 | Capability | JPEG | PNG | static WebP |
@@ -287,7 +325,14 @@ lib/
     |-- filesystem/                       # Managed temporary-file policy
     |-- geometry/                         # Viewport-to-image coordinate mapping
     |-- widgets/                          # Optional editor and ready-made page
-    `-- models/                           # Requests, results, and options
+    |-- models/                           # Requests, results, and options
+    `-- prebuilt/                         # Target map, download, SHA-256 check
+
+hook/
+`-- build.dart                            # Prebuilt-first native asset hook
+
+.github/workflows/
+`-- prebuilt-native.yml                   # Cross-platform binary release
 
 native/src/
 |-- ffi/                                  # Stable C ABI
@@ -299,10 +344,8 @@ native/src/
 `-- error.rs                              # Structured native errors
 ```
 
-The retained C `package_ffi` skeleton in `src/` and its generated bindings are
-build scaffolding only and are not exported by the package's public API. The
-Rust core is intentionally structured around `Read + Seek` metadata input so
-future file-descriptor adapters do not require coupling image parsing to a
+The Rust core is intentionally structured around `Read + Seek` metadata input
+so future file-descriptor adapters do not require coupling image parsing to a
 filesystem path.
 
 ## Verification
