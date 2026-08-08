@@ -45,6 +45,10 @@ flutter:
       macos:
         pluginClass: FileImageCropperPlugin
         sharedDarwinSource: true
+      linux:
+        pluginClass: FileImageCropperPlugin
+      windows:
+        pluginClass: FileImageCropperPluginCApi
 
 dev_dependencies:
   flutter_test:

@@ -136,12 +136,23 @@ final class HeicPlatformBackend {
       }
       return result;
     } on PlatformException catch (error) {
+      if (error.code == 'heic_codec_unavailable') {
+        throw _codecUnavailable(
+          message: error.message ?? 'The platform HEIC codec is unavailable.',
+          details: error.details,
+        );
+      }
       throw HeicPlatformException(
         code: error.code,
         message: error.message ?? 'Platform HEIC operation failed.',
         details: error.details,
       );
     } on MissingPluginException {
+      if (Platform.isWindows || Platform.isLinux) {
+        throw _codecUnavailable(
+          message: 'The HEIC desktop bridge is unavailable in this build.',
+        );
+      }
       throw const HeicPlatformException(
         code: 'plugin_unavailable',
         message: 'The HEIC platform bridge is unavailable in this build.',
@@ -150,31 +161,36 @@ final class HeicPlatformBackend {
   }
 
   void _ensureSupportedPlatform() {
-    if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) return;
-    if (Platform.isWindows) {
-      throw HeicCodecUnavailableException(
-        platform: 'windows',
-        message:
-            'HEIC input is not decoded by file_image_cropper on Windows yet. '
-            'Install Microsoft HEIF Image Extensions to view or convert it, '
-            'then pass JPEG, PNG, or WebP to the package.',
-        helpUri: Uri.parse(_windowsHeifExtensions),
-      );
-    }
-    if (Platform.isLinux) {
-      throw HeicCodecUnavailableException(
-        platform: 'linux',
-        message:
-            'HEIC input is not decoded by file_image_cropper on Linux yet. '
-            'Install a distribution package based on libheif to convert it, '
-            'then pass JPEG, PNG, or WebP to the package.',
-        helpUri: Uri.parse(_linuxLibheif),
-      );
+    if (Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isWindows ||
+        Platform.isLinux) {
+      return;
     }
     throw HeicCodecUnavailableException(
       platform: Platform.operatingSystem,
       message: 'HEIC input is unavailable on this platform.',
       helpUri: Uri.parse(_linuxLibheif),
+    );
+  }
+
+  HeicCodecUnavailableException _codecUnavailable({
+    required String message,
+    Object? details,
+  }) {
+    final String platform = Platform.operatingSystem;
+    final String? suppliedHelpUri = switch (details) {
+      <Object?, Object?>{'helpUri': final String uri} => uri,
+      _ => null,
+    };
+    return HeicCodecUnavailableException(
+      platform: platform,
+      message: message,
+      helpUri: Uri.parse(
+        suppliedHelpUri ??
+            (Platform.isWindows ? _windowsHeifExtensions : _linuxLibheif),
+      ),
     );
   }
 }

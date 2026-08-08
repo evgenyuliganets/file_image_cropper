@@ -1,11 +1,13 @@
 ## 0.3.0
 
-- Added static HEIC input and inspection on Android 9+, iOS, and macOS using
-  their system image decoders.
+- Added static HEIC input and inspection on Android 9+, iOS, macOS, Windows,
+  and Linux. Windows uses an installed WIC HEIF/HEVC decoder; Linux dynamically
+  uses an installed `libheif` runtime with an HEVC decoder.
 - Added a direct borrowed-RGBA native ABI, keeping decoded pixels out of Dart
   and avoiding intermediate PNG files before Rust crop/resize/encode.
 - Added structured `HeicCodecUnavailableException` guidance with Microsoft
-  HEIF Image Extensions and libheif links on Windows and Linux.
+  HEIF Image Extensions and libheif links when an optional desktop codec is
+  unavailable.
 - HEIC output, animated HEIF, AVIF, TIFF, and RAW remain unsupported.
 
 ## 0.2.0

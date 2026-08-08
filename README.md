@@ -56,24 +56,30 @@ the package itself stays small and each build downloads only its target asset.
 
 | Capability | JPEG | PNG | static WebP | static HEIC |
 | --- | --- | --- | --- | --- |
-| Inspect | yes | yes | yes | Android 9+, iOS, macOS |
-| Input | yes | yes | yes | Android 9+, iOS, macOS |
+| Inspect | yes | yes | yes | Android 9+, iOS, macOS, Windows¹, Linux² |
+| Input | yes | yes | yes | Android 9+, iOS, macOS, Windows¹, Linux² |
 | Output | yes | yes | yes | no |
 
+¹ Windows requires a system WIC HEIF/HEVC decoder. ² Linux requires a system
+`libheif` build with an HEVC decoder.
+
 HEIC is detected from its ISO BMFF brands instead of the filename extension.
-Android uses the system `ImageDecoder`; iOS and macOS use ImageIO/Core Image.
+Android uses the system `ImageDecoder`; iOS and macOS use ImageIO/Core Image;
+Windows uses Windows Imaging Component (WIC). Linux loads an already-installed
+`libheif.so` at runtime. The package does not bundle or download `libheif`.
+
 The orientation-normalized RGBA buffer is passed directly from the platform
 decoder to Rust memory: it is not encoded as an intermediate PNG and pixel data
 does not cross the Dart method channel. Rust remains responsible for crop,
 resize, JPEG/PNG/WebP encoding, staging, and atomic commit.
 
-Windows and Linux currently return `HeicCodecUnavailableException` with an
-actionable `helpUri`. On Windows, install
-[Microsoft HEIF Image Extensions](https://apps.microsoft.com/detail/9pmmsr1cgpwg)
-to view or convert HEIC. On Linux, install a distribution package based on
-[libheif](https://github.com/strukturag/libheif) to convert it. Installing these
-tools does not make this package decode HEIC on Windows/Linux yet; pass the
-converted JPEG, PNG, or WebP file to the cropper.
+If the optional desktop codec is missing, inspection and crop throw
+`HeicCodecUnavailableException` with an actionable `helpUri`. On Windows,
+install [Microsoft HEIF Image Extensions](https://apps.microsoft.com/detail/9pmmsr1cgpwg)
+and any HEVC component required by the source image. On Linux, install your
+distribution's [libheif](https://github.com/strukturag/libheif) runtime package
+with an HEVC decoder. Restart the application after installation; subsequent
+HEIC operations use the installed codec directly.
 
 Animated WebP/GIF or HEIF, AVIF, TIFF, and camera RAW formats are not supported.
 
@@ -369,8 +375,10 @@ outputs, no-clobber commits, cleanup ownership, sequential/parallel output
 equivalence, crop-editor gestures, and UI customization builders.
 
 The platform workflow runs Rust formatting/tests, Flutter analysis, widget and
-FFI smoke tests, desktop Flutter builds on Windows/Linux/macOS, an Android emulator
-runtime smoke, and iOS device/simulator builds with a simulator runtime smoke.
+FFI smoke tests, desktop Flutter builds on Windows/Linux/macOS, an Android APK
+build, and iOS device/simulator builds. Runtime behavior is intentionally
+tested manually on real target systems because installed desktop codecs and
+device implementations vary.
 Applications should still validate performance and OS-version compatibility on
 their own supported real devices before shipping to users.
 

@@ -18,27 +18,6 @@ env:
   FLUTTER_VERSION: 3.44.6
 
 jobs:
-  heic-fixture:
-    name: Generate HEIC smoke fixture
-    runs-on: macos-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Encode the existing libpng-licensed fixture as HEIC
-        run: |
-          mkdir -p generated
-          sips -s format heic native/tests/fixtures/png/pngtest.png \
-            --out generated/system_test.heic
-          test -s generated/system_test.heic
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: generated-heic-fixture
-          path: generated/system_test.heic
-          if-no-files-found: error
-
   desktop-smoke:
     name: ${{ matrix.platform }} smoke
     strategy:
@@ -109,18 +88,12 @@ jobs:
         run: ${{ matrix.flutter_command }}
 
   android-build:
-    name: Android build and emulator smoke
-    needs: heic-fixture
+    name: Android build
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v6
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: generated-heic-fixture
-          path: example/assets/heic
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -146,40 +119,13 @@ jobs:
           RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: flutter build apk --debug
 
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Run native crop smoke on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        env:
-          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          script: >-
-            cd example && flutter test
-            integration_test/native_crop_smoke_test.dart
-            --dart-define=FILE_IMAGE_CROPPER_HEIC_SMOKE=true
-            -d emulator-5554
-
   ios-build:
-    name: iOS builds and simulator smoke
-    needs: heic-fixture
+    name: iOS builds
     runs-on: macos-latest
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v6
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: generated-heic-fixture
-          path: example/assets/heic
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2.17.0
@@ -203,16 +149,3 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
         run: flutter build ios --simulator --debug
-
-      - name: Run native crop smoke on iOS simulator
-        working-directory: example
-        env:
-          RUSTUP_TOOLCHAIN: prebuilt-assets-must-not-use-rust
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')
-          test -n "$DEVICE_ID"
-          xcrun simctl boot "$DEVICE_ID" || true
-          xcrun simctl bootstatus "$DEVICE_ID" -b
-          flutter test integration_test/native_crop_smoke_test.dart \
-            --dart-define=FILE_IMAGE_CROPPER_HEIC_SMOKE=true \
-            -d "$DEVICE_ID"

@@ -5,6 +5,8 @@ import 'package:file_image_cropper/src/heic/heic_detector.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory temporary;
 
   setUp(() async {
@@ -69,7 +71,7 @@ void main() {
     expect(await isHeicFile(input), isTrue);
   });
 
-  test('Windows and Linux return actionable HEIC codec guidance', () async {
+  test('missing desktop bridge returns actionable HEIC guidance', () async {
     if (!Platform.isWindows && !Platform.isLinux) return;
     final File input = File('${temporary.path}/photo.heic');
     await input.writeAsBytes(<int>[
