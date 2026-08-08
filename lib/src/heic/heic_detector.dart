@@ -9,6 +9,8 @@ const Set<String> _hevcHeifBrands = <String>{
   'heim',
   'heis',
 };
+const Set<String> _genericHeifBrands = <String>{'mif1', 'msf1'};
+const Set<String> _avifBrands = <String>{'avif', 'avis'};
 
 /// Identifies HEVC-backed HEIF by its ISO BMFF `ftyp` box, not its extension.
 Future<bool> isHeicFile(File file) async {
@@ -47,15 +49,17 @@ bool _containsHeicFileType(Uint8List bytes) {
     if (boxSize < headerSize || offset + boxSize > bytes.length) return false;
     if (type == 'ftyp' && boxSize >= headerSize + 8) {
       final int brandsStart = offset + headerSize;
-      if (_hevcHeifBrands.contains(_ascii(bytes, brandsStart))) return true;
+      final Set<String> brands = <String>{_ascii(bytes, brandsStart)};
       for (
         int brandOffset = brandsStart + 8;
         brandOffset + 4 <= offset + boxSize;
         brandOffset += 4
       ) {
-        if (_hevcHeifBrands.contains(_ascii(bytes, brandOffset))) return true;
+        brands.add(_ascii(bytes, brandOffset));
       }
-      return false;
+      if (brands.any(_hevcHeifBrands.contains)) return true;
+      return brands.any(_genericHeifBrands.contains) &&
+          !brands.any(_avifBrands.contains);
     }
     offset += boxSize;
   }

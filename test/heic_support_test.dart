@@ -52,6 +52,23 @@ void main() {
     expect(await isHeicFile(input), isFalse);
   });
 
+  test('accepts generic still HEIF when AVIF is not declared', () async {
+    final File input = File('${temporary.path}/photo.heif');
+    await input.writeAsBytes(<int>[
+      0,
+      0,
+      0,
+      16,
+      ...'ftyp'.codeUnits,
+      ...'mif1'.codeUnits,
+      0,
+      0,
+      0,
+      0,
+    ]);
+    expect(await isHeicFile(input), isTrue);
+  });
+
   test('Windows and Linux return actionable HEIC codec guidance', () async {
     if (!Platform.isWindows && !Platform.isLinux) return;
     final File input = File('${temporary.path}/photo.heic');

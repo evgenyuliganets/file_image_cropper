@@ -4,7 +4,7 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 
 const nativeImageEngineAssetName = 'src/ffi/native_image_engine.dart';
-const prebuiltReleaseTag = 'native-v0.2.0';
+const prebuiltReleaseTag = 'native-v0.3.0';
 
 const _releaseBase =
     'https://github.com/evgenyuliganets/file_image_cropper/releases/download';
@@ -134,50 +134,50 @@ Future<String> _sha256(File file) async =>
 const _prebuiltAssets = <String, PrebuiltAsset>{
   'android-arm': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_android_arm.so',
-    sha256: '4912a843bfaf269eab3bbcccce52cc7d868b549f0f3b356f2ee623779785a318',
+    sha256: '80f6c3e1a731cbf5b7ca9fb2111a5a7fe5c7ab88ec14367e4c49cfccc351e4b5',
   ),
   'android-arm64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_android_arm64.so',
-    sha256: 'aa4f7d409ade819cb319d2fad4a2961fb62d1a02189c1da9030938199db72c69',
+    sha256: '981beb6b8c74993ce04ebb8cf971fb62c30ccdcc537b8cc6214b0e16bf3e463c',
   ),
   'android-x64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_android_x64.so',
-    sha256: '0697b253bd9cc9eed8031ccc75e3da897afe2302b1b7b95ea45c5fe075d9d23c',
+    sha256: '05851c7a06eaf5cfceadc450f5ff08d17d37c975161f068e6c5a27304601adf3',
   ),
   'ios-arm64-iphoneos': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_ios_arm64_iphoneos.dylib',
-    sha256: 'f7d3a9e10f4ece6b300145c6f03da6bc4fbb046c93f6fa0f9864fd451098f195',
+    sha256: '59040e9099fc63d7fea3e86c0c02146a21c972596df055c2286196f267085057',
   ),
   'ios-arm64-iphonesimulator': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_ios_arm64_iphonesimulator.dylib',
-    sha256: '2e39e54e95b894725676ee1641feec5a54b06175fe6c454817332cedddad854a',
+    sha256: '43f14d10b1ec670046448ec809abc0f560a4e4e7e52426d289ade4f61c1fabc6',
   ),
   'ios-x64-iphonesimulator': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_ios_x64_iphonesimulator.dylib',
-    sha256: 'd23aabd38c90a70463f8806493924494d7c2dd3213172f70676e54c8f3936179',
+    sha256: '9130d20e4a7adb701f8f7545a60058688b774ef59d8d6d17c67f496cad0c7419',
   ),
   'linux-arm64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_linux_arm64.so',
-    sha256: '87a1af6553e6bbb2462f77d36abb6827ce73df1f30fb4ac26e426bf1f401521a',
+    sha256: '08906c37428f1c61613714b590dfb0d4af7f86fc493b9d579bed35687ff90e9c',
   ),
   'linux-x64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_linux_x64.so',
-    sha256: 'f3ab4ba356797d314a25fd48d3da71e11d5f513a083762ee75185ec714c50477',
+    sha256: 'a87051503a0fc7bc384246e5b7e71413368f4de1f9f82e1851320cb354ddd795',
   ),
   'macos-arm64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_macos_arm64.dylib',
-    sha256: '49edf325b96a68af2bf172f2f5692326009871e4443255e1dfd30e97a0887cb7',
+    sha256: 'e5183c72f763595f952fdc8e685fd9742b79e6e9f3e05de3e5a71b35480730d2',
   ),
   'macos-x64': PrebuiltAsset(
     fileName: 'libfile_image_cropper_native_macos_x64.dylib',
-    sha256: '0e1b73c435308d0c182090f3cb523771cbde29c0ceaa9b2284fad624ea460a2d',
+    sha256: 'b3e923d9e1e661ee325531f795189fcee40f13b67ada70d54ab3806fa2dab304',
   ),
   'windows-arm64': PrebuiltAsset(
     fileName: 'file_image_cropper_native_windows_arm64.dll',
-    sha256: 'a9be816cdedd05f40cb6de38ed82d63d75c1aac818a321084c6a18bdc17ca1d2',
+    sha256: 'f7de0e09baa5d609d0f695ef87f80bef4d825e16e29f8325723314bfb813a3ce',
   ),
   'windows-x64': PrebuiltAsset(
     fileName: 'file_image_cropper_native_windows_x64.dll',
-    sha256: '216732b98de5f1148a7774960639e15ee8d374c2a7df4e36d32a390995bd17da',
+    sha256: '39c5ff0642c88722abaa1fbc6d2c420ddf7bf4bd243309c380fc6f6c5fb875e4',
   ),
 };
