@@ -62,7 +62,9 @@ jobs:
 
       - name: Verify Rust formatting
         working-directory: native
-        run: cargo fmt --all -- --check
+        run: |
+          rustup component add rustfmt --toolchain 1.97.1
+          cargo fmt --all -- --check
 
       - name: Test native codecs
         working-directory: native
