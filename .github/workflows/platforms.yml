@@ -18,6 +18,27 @@ env:
   FLUTTER_VERSION: 3.44.6
 
 jobs:
+  heic-fixture:
+    name: Generate HEIC smoke fixture
+    runs-on: macos-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Encode the existing libpng-licensed fixture as HEIC
+        run: |
+          mkdir -p generated
+          sips -s format heic native/tests/fixtures/png/pngtest.png \
+            --out generated/system_test.heic
+          test -s generated/system_test.heic
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-heic-fixture
+          path: generated/system_test.heic
+          if-no-files-found: error
+
   desktop-smoke:
     name: ${{ matrix.platform }} smoke
     strategy:
@@ -89,11 +110,17 @@ jobs:
 
   android-build:
     name: Android build and emulator smoke
+    needs: heic-fixture
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-heic-fixture
+          path: example/assets/heic
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -134,15 +161,25 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: cd example && flutter test integration_test/native_crop_smoke_test.dart -d emulator-5554
+          script: >-
+            cd example && flutter test
+            integration_test/native_crop_smoke_test.dart
+            --dart-define=FILE_IMAGE_CROPPER_HEIC_SMOKE=true
+            -d emulator-5554
 
   ios-build:
     name: iOS builds and simulator smoke
+    needs: heic-fixture
     runs-on: macos-latest
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-heic-fixture
+          path: example/assets/heic
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2.17.0
@@ -176,4 +213,6 @@ jobs:
           test -n "$DEVICE_ID"
           xcrun simctl boot "$DEVICE_ID" || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
-          flutter test integration_test/native_crop_smoke_test.dart -d "$DEVICE_ID"
+          flutter test integration_test/native_crop_smoke_test.dart \
+            --dart-define=FILE_IMAGE_CROPPER_HEIC_SMOKE=true \
+            -d "$DEVICE_ID"

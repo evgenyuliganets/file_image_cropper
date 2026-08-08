@@ -7,6 +7,8 @@ import 'package:ffi/ffi.dart';
 
 import '../api/file_image_cropper_api.dart';
 import '../filesystem/managed_file_system.dart';
+import '../heic/heic_detector.dart';
+import '../heic/heic_platform_backend.dart';
 import '../models/crop_region.dart';
 import '../models/crop_request.dart';
 import '../models/crop_result.dart';
@@ -140,16 +142,38 @@ external NativeCropResult _cropImageNative(
   int resultPathCapacity,
 );
 
+@Native<Uint32 Function()>(symbol: 'file_image_cropper_abi_version')
+external int _nativeAbiVersion();
+
+/// Ensures the bundled Rust code asset is loaded before a platform bridge
+/// resolves the raw-RGBA symbol from the same native library.
+void ensureNativeImageEngineLoaded() {
+  final int version = _nativeAbiVersion();
+  if (version < 3) {
+    throw StateError('HEIC requires file_image_cropper native ABI 3 or newer.');
+  }
+}
+
 final class NativeImageEngine implements FileImageCropperApi {
   const NativeImageEngine();
 
   @override
-  Future<ImageInfo> inspectImage(File input) =>
-      _nativeWorker.execute<ImageInfo>(_WorkerOperation.inspect, input.path);
+  Future<ImageInfo> inspectImage(File input) async {
+    if (await isHeicFile(input)) {
+      return const HeicPlatformBackend().inspect(input);
+    }
+    return _nativeWorker.execute<ImageInfo>(
+      _WorkerOperation.inspect,
+      input.path,
+    );
+  }
 
   @override
-  Future<CropResult> crop(CropRequest request) {
+  Future<CropResult> crop(CropRequest request) async {
     _validateCropRequest(request);
+    if (await isHeicFile(request.input)) {
+      return const HeicPlatformBackend().crop(request);
+    }
     return _nativeWorker.execute<CropResult>(_WorkerOperation.crop, request);
   }
 }

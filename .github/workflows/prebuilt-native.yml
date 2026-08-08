@@ -6,7 +6,7 @@ on:
       release_tag:
         description: GitHub release tag for the native asset set
         required: true
-        default: native-v0.2.0
+        default: native-v0.3.0
   push:
     tags:
       - native-v*

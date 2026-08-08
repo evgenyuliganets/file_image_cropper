@@ -38,6 +38,54 @@ pub fn process_pixels_shared(
     process_pixels(input, request, shared_executor())
 }
 
+pub fn process_pixel_view_shared(
+    input: PixelView<'_>,
+    request: PixelProcessRequest,
+) -> Result<PixelBuffer, PixelError> {
+    process_pixel_view(input, request, shared_executor())
+}
+
+pub fn process_pixel_view(
+    input: PixelView<'_>,
+    request: PixelProcessRequest,
+    executor: Option<&ParallelExecutor>,
+) -> Result<PixelBuffer, PixelError> {
+    if request.orientation == Orientation::Normal {
+        return finish_view(input, request, executor);
+    }
+    let oriented_input = if let Some(rect) = request.crop {
+        let source_crop = source_crop_for_oriented_rect(
+            input.width(),
+            input.height(),
+            request.orientation,
+            rect,
+        )?;
+        crop_view(input, source_crop)?
+    } else {
+        input
+    };
+    let oriented = normalize_orientation(
+        oriented_input,
+        request.orientation,
+        request.limits,
+        executor,
+    )?;
+    let resize_is_identity = request
+        .resize
+        .is_none_or(|spec| spec.width == oriented.width() && spec.height == oriented.height());
+    if resize_is_identity {
+        return Ok(oriented);
+    }
+    finish_view(
+        oriented.view(),
+        PixelProcessRequest {
+            crop: None,
+            ..request
+        },
+        executor,
+    )
+}
+
 pub fn process_pixels(
     input: PixelBuffer,
     request: PixelProcessRequest,

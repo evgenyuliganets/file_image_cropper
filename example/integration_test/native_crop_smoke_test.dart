@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_image_cropper/file_image_cropper.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -42,6 +43,48 @@ void main() {
         } finally {
           expect(await result.delete(), isTrue);
         }
+      }
+    } finally {
+      await directory.delete(recursive: true);
+    }
+  });
+
+  testWidgets('system HEIC decoder feeds the Rust crop pipeline', (_) async {
+    const bool enabled = bool.fromEnvironment('FILE_IMAGE_CROPPER_HEIC_SMOKE');
+    if (!enabled) return;
+
+    final ByteData fixture = await rootBundle.load(
+      'assets/heic/system_test.heic',
+    );
+    final Directory directory = await Directory.systemTemp.createTemp(
+      'file_image_cropper_heic_smoke_',
+    );
+    try {
+      final File input = File(
+        '${directory.path}${Platform.pathSeparator}input.heic',
+      );
+      await input.writeAsBytes(fixture.buffer.asUint8List(), flush: true);
+      final ImageInfo source = await inspectImage(input);
+      expect(source.format, ImageFormat.heic);
+      expect(source.width, greaterThan(0));
+      expect(source.height, greaterThan(0));
+
+      final CropResult output = await crop(
+        CropRequest(
+          input: input,
+          region: const CropRegion.centered(aspectRatio: 1),
+          outputSize: const PixelSize(width: 32, height: 32),
+          outputFormat: OutputFormat.png,
+        ),
+      );
+      try {
+        final ImageInfo result = await inspectImage(output.file);
+        expect(
+          (result.width, result.height, result.format),
+          (32, 32, ImageFormat.png),
+        );
+      } finally {
+        await output.delete();
       }
     } finally {
       await directory.delete(recursive: true);

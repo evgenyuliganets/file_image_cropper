@@ -9,11 +9,11 @@ use crate::crop::{AspectMismatchPolicy, CropRegion, resolve_crop_region};
 use crate::error::Error;
 use crate::filesystem::{OutputFileType, OutputTarget, StagedOutput, open_input};
 use crate::image_info::{ImageFormat, inspect_path};
-use crate::pixel::{PixelError, PixelLimits};
+use crate::pixel::{PixelError, PixelLimits, PixelView};
 use crate::resize::ResizeFilter;
 use crate::rotate::{Orientation, oriented_dimensions};
 
-use super::{PixelProcessRequest, ResizeSpec, process_pixels_shared};
+use super::{PixelProcessRequest, ResizeSpec, process_pixel_view_shared, process_pixels_shared};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OutputCodec {
@@ -122,6 +122,60 @@ pub fn process_image_file(
     request: FileCropRequest,
 ) -> Result<FileProcessResult, FileProcessError> {
     process_image_file_profiled(input_path, output_target, request).map(|(result, _)| result)
+}
+
+/// Processes an orientation-normalized RGBA8 image decoded by a platform
+/// codec. The pixel slice is borrowed synchronously and never retained.
+pub fn process_rgba_view_file(
+    decoded: PixelView<'_>,
+    output_target: OutputTarget,
+    request: FileCropRequest,
+) -> Result<FileProcessResult, FileProcessError> {
+    let crop = resolve_crop_region(
+        request.region,
+        decoded.width(),
+        decoded.height(),
+        request.output_size,
+        request.aspect_mismatch_policy,
+    )?;
+    let processed = process_pixel_view_shared(
+        decoded,
+        PixelProcessRequest {
+            orientation: Orientation::Normal,
+            crop: Some(crop),
+            resize: request.output_size.map(|(width, height)| ResizeSpec {
+                width,
+                height,
+                filter: request.resize_filter,
+            }),
+            limits: request.limits,
+        },
+    )?;
+    encode_and_commit(processed, output_target, request.output_codec)
+}
+
+fn encode_and_commit(
+    processed: crate::pixel::PixelBuffer,
+    output_target: OutputTarget,
+    output_codec: OutputCodec,
+) -> Result<FileProcessResult, FileProcessError> {
+    let is_managed = output_target.is_managed();
+    let mut staged = StagedOutput::create(output_target).map_err(FileProcessError::Output)?;
+    match output_codec {
+        OutputCodec::Png => png::encode(staged.writer(), &processed)
+            .map_err(|error| FileProcessError::Encode(CodecError::Png(error)))?,
+        OutputCodec::Jpeg {
+            quality,
+            background,
+        } => jpeg::encode(staged.writer(), &processed, quality, background)
+            .map_err(|error| FileProcessError::Encode(CodecError::Jpeg(error)))?,
+        OutputCodec::WebP { lossless, quality } => {
+            webp::encode(staged.writer(), &processed, lossless, quality)
+                .map_err(|error| FileProcessError::Encode(CodecError::WebP(error)))?
+        }
+    }
+    let path = staged.commit().map_err(FileProcessError::Output)?;
+    Ok(FileProcessResult { path, is_managed })
 }
 
 pub fn process_image_file_profiled(

@@ -8,6 +8,8 @@ import 'src/models/image_info.dart';
 
 export 'src/api/file_image_cropper_api.dart';
 export 'src/geometry/crop_geometry.dart';
+export 'src/heic/heic_platform_backend.dart'
+    show HeicCodecUnavailableException, HeicPlatformException;
 export 'src/ffi/native_image_engine.dart'
     show
         CropException,

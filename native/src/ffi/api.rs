@@ -9,9 +9,17 @@ use crate::filesystem::OutputTarget;
 use crate::image_info::{self, ImageFormat};
 use crate::pipeline::{
     CodecError, FileCropRequest, FileProcessError, OutputCodec, process_image_file,
+    process_rgba_view_file,
 };
-use crate::pixel::{PixelError, PixelLimits};
+use crate::pixel::{PixelError, PixelLimits, PixelView};
 use crate::resize::ResizeFilter;
+
+/// Native ABI generation used by platform bridges to force the bundled code
+/// asset to load before resolving optional symbols.
+#[unsafe(no_mangle)]
+pub extern "C" fn file_image_cropper_abi_version() -> u32 {
+    3
+}
 
 #[repr(i32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -297,6 +305,176 @@ pub unsafe extern "C" fn file_image_cropper_crop_image(
     .unwrap_or_else(|_| FfiCropResult::failure(CropStatus::Panic, 0))
 }
 
+/// Crops already decoded, orientation-normalized RGBA8 pixels. Platform image
+/// decoders use this entry point so the decoded frame never crosses Dart or a
+/// temporary image file.
+///
+/// The pixel memory is borrowed only for this synchronous call.
+///
+/// # Safety
+/// `pixels` must reference `pixels_length` readable bytes. Every path pointer
+/// follows the same contract as [`file_image_cropper_crop_image`], `options`
+/// must be readable, and `result_path` must have `result_path_capacity` bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn file_image_cropper_crop_rgba(
+    pixels: *const u8,
+    pixels_length: usize,
+    width: u32,
+    height: u32,
+    stride: usize,
+    output_bytes: *const u8,
+    output_length: usize,
+    managed_root_bytes: *const u8,
+    managed_root_length: usize,
+    options: *const FfiCropOptions,
+    result_path: *mut u8,
+    result_path_capacity: usize,
+) -> FfiCropResult {
+    std::panic::catch_unwind(|| {
+        if (pixels.is_null() && pixels_length != 0) || options.is_null() {
+            return FfiCropResult::failure(CropStatus::InvalidRequest, 0);
+        }
+        let pixel_bytes = if pixels_length == 0 {
+            &[]
+        } else {
+            // SAFETY: Guaranteed by the function's caller contract.
+            unsafe { std::slice::from_raw_parts(pixels, pixels_length) }
+        };
+        // SAFETY: Guaranteed by the function's caller contract.
+        let options = unsafe { *options };
+        let request = match file_request_from_options(&options) {
+            Ok(request) => request,
+            Err(result) => return result,
+        };
+        let target = match unsafe {
+            output_target_from_ffi(
+                output_bytes,
+                output_length,
+                managed_root_bytes,
+                managed_root_length,
+                &options,
+                request.output_codec,
+            )
+        } {
+            Ok(target) => target,
+            Err(result) => return result,
+        };
+        let Some(final_path) = target.path().to_str().map(str::as_bytes).map(Vec::from) else {
+            return FfiCropResult::failure(CropStatus::InvalidPath, 0);
+        };
+        if result_path.is_null() || final_path.len() > result_path_capacity {
+            return FfiCropResult::failure(CropStatus::ResultPathTooLong, 0);
+        }
+        let view = match PixelView::new_rgba8(width, height, stride, pixel_bytes, request.limits) {
+            Ok(view) => view,
+            Err(error) => {
+                return FfiCropResult::failure(CropStatus::InvalidRequest, pixel_reason(&error));
+            }
+        };
+        match process_rgba_view_file(view, target, request) {
+            Ok(result) => {
+                // SAFETY: Capacity was validated above.
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        final_path.as_ptr(),
+                        result_path,
+                        final_path.len(),
+                    )
+                };
+                FfiCropResult {
+                    status: CropStatus::Ok as i32,
+                    reason: 0,
+                    path_length: final_path.len(),
+                    is_managed: u8::from(result.is_managed),
+                    _reserved: [0; 7],
+                }
+            }
+            Err(error) => crop_failure(&error),
+        }
+    })
+    .unwrap_or_else(|_| FfiCropResult::failure(CropStatus::Panic, 0))
+}
+
+fn file_request_from_options(options: &FfiCropOptions) -> Result<FileCropRequest, FfiCropResult> {
+    let Some(region) = crop_region(options) else {
+        return Err(FfiCropResult::failure(CropStatus::InvalidRequest, 0));
+    };
+    let aspect_mismatch_policy = match options.aspect_policy {
+        0 => AspectMismatchPolicy::Reject,
+        1 => AspectMismatchPolicy::AdjustCrop,
+        2 => AspectMismatchPolicy::Stretch,
+        _ => return Err(FfiCropResult::failure(CropStatus::InvalidRequest, 0)),
+    };
+    let output_codec = match options.output_format {
+        0 if (1..=100).contains(&options.jpeg_quality)
+            && options.jpeg_background_red <= u8::MAX as u32
+            && options.jpeg_background_green <= u8::MAX as u32
+            && options.jpeg_background_blue <= u8::MAX as u32 =>
+        {
+            OutputCodec::Jpeg {
+                quality: options.jpeg_quality as u8,
+                background: [
+                    options.jpeg_background_red as u8,
+                    options.jpeg_background_green as u8,
+                    options.jpeg_background_blue as u8,
+                ],
+            }
+        }
+        1 => OutputCodec::Png,
+        2 if options.webp_quality <= 100 && options.webp_lossless <= 1 => OutputCodec::WebP {
+            lossless: options.webp_lossless != 0,
+            quality: options.webp_quality as u8,
+        },
+        0 | 2 => return Err(FfiCropResult::failure(CropStatus::InvalidRequest, 0)),
+        _ => return Err(FfiCropResult::failure(CropStatus::UnsupportedFormat, 0)),
+    };
+    let output_size = match (options.output_width, options.output_height) {
+        (0, 0) => None,
+        (0, _) | (_, 0) => {
+            return Err(FfiCropResult::failure(CropStatus::InvalidRequest, 0));
+        }
+        values => Some(values),
+    };
+    let resize_filter = match options.resize_filter {
+        0 => ResizeFilter::Nearest,
+        1 => ResizeFilter::Bilinear,
+        _ => return Err(FfiCropResult::failure(CropStatus::InvalidRequest, 0)),
+    };
+    Ok(FileCropRequest {
+        region,
+        output_size,
+        aspect_mismatch_policy,
+        resize_filter,
+        limits: PixelLimits::default(),
+        output_codec,
+    })
+}
+
+unsafe fn output_target_from_ffi(
+    output_bytes: *const u8,
+    output_length: usize,
+    managed_root_bytes: *const u8,
+    managed_root_length: usize,
+    options: &FfiCropOptions,
+    output_codec: OutputCodec,
+) -> Result<OutputTarget, FfiCropResult> {
+    if output_length == 0 {
+        // SAFETY: Forwarded from the caller contract.
+        let Some(root) = (unsafe { utf8_path(managed_root_bytes, managed_root_length) }) else {
+            return Err(FfiCropResult::failure(CropStatus::InvalidPath, 0));
+        };
+        OutputTarget::managed(root, output_codec.file_type())
+            .map_err(|_| FfiCropResult::failure(CropStatus::Output, 0))
+    } else {
+        // SAFETY: Forwarded from the caller contract.
+        let Some(output) = (unsafe { utf8_path(output_bytes, output_length) }) else {
+            return Err(FfiCropResult::failure(CropStatus::InvalidPath, 0));
+        };
+        OutputTarget::explicit(output, options.overwrite != 0)
+            .map_err(|_| FfiCropResult::failure(CropStatus::Output, 0))
+    }
+}
+
 fn crop_region(options: &FfiCropOptions) -> Option<CropRegion> {
     match options.region_type {
         0 => Some(CropRegion::Pixels(CropRect {
@@ -375,6 +553,8 @@ fn pixel_reason(error: &PixelError) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn reports_invalid_utf8_without_panicking() {
@@ -382,5 +562,67 @@ mod tests {
         // SAFETY: `bytes` remains valid for the duration of the call.
         let result = unsafe { file_image_cropper_inspect_image(bytes.as_ptr(), bytes.len()) };
         assert_eq!(result.status, ImageInfoStatus::InvalidPathEncoding as i32);
+    }
+
+    #[test]
+    fn crops_borrowed_rgba_without_an_intermediate_file() {
+        let token = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "file_image_cropper_ffi_rgba_{}_{token}",
+            std::process::id()
+        ));
+        fs::create_dir(&directory).unwrap();
+        let output = directory.join("result.png");
+        let output_bytes = output.to_str().unwrap().as_bytes();
+        let pixels = [
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+        ];
+        let options = FfiCropOptions {
+            region_type: 0,
+            aspect_policy: 0,
+            region_a: 0.0,
+            region_b: 0.0,
+            region_c: 2.0,
+            region_d: 2.0,
+            output_width: 2,
+            output_height: 2,
+            resize_filter: 1,
+            output_format: 1,
+            jpeg_quality: 90,
+            jpeg_background_red: 255,
+            jpeg_background_green: 255,
+            jpeg_background_blue: 255,
+            webp_lossless: 0,
+            webp_quality: 80,
+            overwrite: 0,
+        };
+        let mut result_path = vec![0_u8; 1024];
+        // SAFETY: Every pointer references a live buffer for this call.
+        let result = unsafe {
+            file_image_cropper_crop_rgba(
+                pixels.as_ptr(),
+                pixels.len(),
+                2,
+                2,
+                8,
+                output_bytes.as_ptr(),
+                output_bytes.len(),
+                std::ptr::null(),
+                0,
+                &options,
+                result_path.as_mut_ptr(),
+                result_path.len(),
+            )
+        };
+        assert_eq!(result.status, CropStatus::Ok as i32);
+        assert_eq!(&result_path[..result.path_length], output_bytes);
+        assert_eq!(
+            image_info::inspect_path(&output).unwrap().format,
+            ImageFormat::Png
+        );
+        fs::remove_dir_all(directory).unwrap();
     }
 }

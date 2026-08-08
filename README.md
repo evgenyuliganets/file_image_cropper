@@ -1,7 +1,7 @@
 # file_image_cropper
 
 A fast, file-first image cropper for Flutter with a customizable editor widget.
-JPEG, PNG, and static WebP files are decoded, transformed, and encoded by a
+JPEG, PNG, static WebP, and platform-supported HEIC input are transformed by a
 Rust native engine while the Flutter UI isolate remains responsive.
 
 ## Supported platforms
@@ -54,15 +54,28 @@ the package itself stays small and each build downloads only its target asset.
 
 ## Supported formats
 
-| Capability | JPEG | PNG | static WebP |
-| --- | --- | --- | --- |
-| Inspect | yes | yes | yes |
-| Input | yes | yes | yes |
-| Output | yes | yes | yes |
+| Capability | JPEG | PNG | static WebP | static HEIC |
+| --- | --- | --- | --- | --- |
+| Inspect | yes | yes | yes | Android 9+, iOS, macOS |
+| Input | yes | yes | yes | Android 9+, iOS, macOS |
+| Output | yes | yes | yes | no |
 
-Animated WebP/GIF, HEIC/HEIF, AVIF, TIFF, and camera RAW formats are not
-supported. Formats are detected from their contents instead of filename
-extensions.
+HEIC is detected from its ISO BMFF brands instead of the filename extension.
+Android uses the system `ImageDecoder`; iOS and macOS use ImageIO/Core Image.
+The orientation-normalized RGBA buffer is passed directly from the platform
+decoder to Rust memory: it is not encoded as an intermediate PNG and pixel data
+does not cross the Dart method channel. Rust remains responsible for crop,
+resize, JPEG/PNG/WebP encoding, staging, and atomic commit.
+
+Windows and Linux currently return `HeicCodecUnavailableException` with an
+actionable `helpUri`. On Windows, install
+[Microsoft HEIF Image Extensions](https://apps.microsoft.com/detail/9pmmsr1cgpwg)
+to view or convert HEIC. On Linux, install a distribution package based on
+[libheif](https://github.com/strukturag/libheif) to convert it. Installing these
+tools does not make this package decode HEIC on Windows/Linux yet; pass the
+converted JPEG, PNG, or WebP file to the cropper.
+
+Animated WebP/GIF or HEIF, AVIF, TIFF, and camera RAW formats are not supported.
 
 ## Usage
 

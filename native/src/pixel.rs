@@ -147,6 +147,38 @@ pub struct PixelView<'a> {
 }
 
 impl<'a> PixelView<'a> {
+    pub fn new_rgba8(
+        width: u32,
+        height: u32,
+        stride: usize,
+        data: &'a [u8],
+        limits: PixelLimits,
+    ) -> Result<Self, PixelError> {
+        let row_bytes = (width as usize)
+            .checked_mul(RGBA_CHANNELS)
+            .ok_or(PixelError::DimensionOverflow)?;
+        allocation_size(width, height, limits)?;
+        if stride < row_bytes || stride % RGBA_CHANNELS != 0 {
+            return Err(PixelError::InvalidRowLayout);
+        }
+        let expected = stride
+            .checked_mul(height.saturating_sub(1) as usize)
+            .and_then(|prefix| prefix.checked_add(row_bytes))
+            .ok_or(PixelError::DimensionOverflow)?;
+        if data.len() < expected {
+            return Err(PixelError::BufferSizeMismatch {
+                expected,
+                actual: data.len(),
+            });
+        }
+        Ok(Self {
+            data,
+            width,
+            height,
+            stride,
+        })
+    }
+
     pub fn width(self) -> u32 {
         self.width
     }
@@ -214,6 +246,18 @@ mod tests {
                 expected: 16,
                 actual: 15
             })
+        );
+    }
+
+    #[test]
+    fn validates_borrowed_rgba_rows_with_padding() {
+        let data = vec![0; 24];
+        let view = PixelView::new_rgba8(2, 2, 16, &data, PixelLimits::default()).unwrap();
+        assert_eq!(view.row(1).len(), 8);
+        assert_eq!(view.stride(), 16);
+        assert_eq!(
+            PixelView::new_rgba8(2, 2, 7, &data, PixelLimits::default()).unwrap_err(),
+            PixelError::InvalidRowLayout
         );
     }
 
