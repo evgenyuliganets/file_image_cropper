@@ -93,12 +93,21 @@ public final class FileImageCropperPlugin implements FlutterPlugin, MethodChanne
   private void crop(MethodCall call, MethodChannel.Result result) throws Exception {
     final String inputPath = requiredString(call, "inputPath");
     final ImageDecoder.Source source = ImageDecoder.createSource(new File(inputPath));
-    final Bitmap bitmap = ImageDecoder.decodeBitmap(source, (decoder, ignored, ignoredSource) -> {
+    final Bitmap decoded = ImageDecoder.decodeBitmap(source, (decoder, ignored, ignoredSource) -> {
       decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
-      decoder.setMemorySizePolicy(ImageDecoder.MEMORY_POLICY_LOW_RAM);
       decoder.setMutableRequired(true);
       decoder.setUnpremultipliedRequired(true);
     });
+    final Bitmap bitmap;
+    if (decoded.getConfig() == Bitmap.Config.ARGB_8888) {
+      bitmap = decoded;
+    } else {
+      bitmap = decoded.copy(Bitmap.Config.ARGB_8888, true);
+      decoded.recycle();
+      if (bitmap == null) {
+        throw new IllegalStateException("Unable to convert HEIC pixels to RGBA8.");
+      }
+    }
     try {
       final String outputPath = call.argument("outputPath");
       final String[] nativeResult = nativeCropBitmap(
