@@ -1,3 +1,9 @@
+/// Fast, multithreaded file-based image cropping for Flutter.
+///
+/// Use [crop] for code-driven processing or [FileImageCropperPage] for an
+/// interactive crop screen.
+library;
+
 import 'dart:io';
 
 import 'src/filesystem/managed_file_system.dart';

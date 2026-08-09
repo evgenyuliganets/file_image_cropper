@@ -4,6 +4,7 @@ import '../models/crop_region.dart';
 
 /// Controls and observes the currently selected normalized crop region.
 final class CropEditorController extends ChangeNotifier {
+  /// Creates a controller with an optional normalized initial selection.
   CropEditorController({
     NormalizedCropRegion initialRegion = const NormalizedCropRegion(
       left: 0,
@@ -19,6 +20,7 @@ final class CropEditorController extends ChangeNotifier {
   NormalizedCropRegion _resetRegion;
   NormalizedCropRegion _region;
 
+  /// Current normalized crop selection.
   NormalizedCropRegion get region => _region;
 
   /// Updates the selection. Values are relative to the oriented image.

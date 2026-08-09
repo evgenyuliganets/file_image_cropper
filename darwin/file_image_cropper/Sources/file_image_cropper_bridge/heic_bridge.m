@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 
-#import "include/file_image_cropper/heic_bridge.h"
+#import "file_image_cropper_bridge/heic_bridge.h"
 
 typedef struct {
   int32_t status;

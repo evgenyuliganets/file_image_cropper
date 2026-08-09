@@ -6,6 +6,9 @@ import FlutterMacOS
 import CoreGraphics
 import CoreImage
 import ImageIO
+#if SWIFT_PACKAGE
+import file_image_cropper_bridge
+#endif
 
 public final class FileImageCropperPlugin: NSObject, FlutterPlugin {
   private let queue = DispatchQueue(

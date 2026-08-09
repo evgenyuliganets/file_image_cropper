@@ -1,9 +1,17 @@
 import 'package:flutter/widgets.dart';
 
-enum CropHandleShape { square, circle }
+/// Shapes available for the built-in crop drag handles.
+enum CropHandleShape {
+  /// Square drag handle.
+  square,
+
+  /// Circular drag handle.
+  circle,
+}
 
 /// Visual configuration for the built-in crop mask, grid, and drag handles.
 final class CropOverlayStyle {
+  /// Creates visual configuration for the built-in crop overlay.
   const CropOverlayStyle({
     this.maskColor = const Color(0x99000000),
     this.borderColor = const Color(0xffffffff),
@@ -20,20 +28,46 @@ final class CropOverlayStyle {
     this.handleShape = CropHandleShape.square,
   });
 
+  /// Color drawn over the unselected image area.
   final Color maskColor;
+
+  /// Selection border color.
   final Color borderColor;
+
+  /// Selection border thickness.
   final double borderWidth;
+
+  /// Selection border corner radius.
   final double borderRadius;
+
+  /// Internal grid line color.
   final Color gridColor;
+
+  /// Internal grid line thickness.
   final double gridStrokeWidth;
+
+  /// Number of horizontal grid divisions.
   final int gridRows;
+
+  /// Number of vertical grid divisions.
   final int gridColumns;
+
+  /// Whether the internal composition grid is visible.
   final bool showGrid;
+
+  /// Drag handle color.
   final Color handleColor;
+
+  /// Visible drag handle size.
   final double handleSize;
+
+  /// Touch target size around each handle.
   final double handleHitSize;
+
+  /// Shape of the drag handles.
   final CropHandleShape handleShape;
 
+  /// Returns a copy with selected values replaced.
   CropOverlayStyle copyWith({
     Color? maskColor,
     Color? borderColor,

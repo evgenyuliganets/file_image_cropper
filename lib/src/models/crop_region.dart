@@ -23,7 +23,9 @@ sealed class CropRegion {
       CenteredCropRegion;
 }
 
+/// An exact crop in orientation-normalized source pixels.
 final class PixelCropRegion extends CropRegion {
+  /// Creates an exact source-pixel crop.
   const PixelCropRegion({
     required this.x,
     required this.y,
@@ -31,13 +33,22 @@ final class PixelCropRegion extends CropRegion {
     required this.height,
   });
 
+  /// Horizontal offset from the oriented image's left edge.
   final int x;
+
+  /// Vertical offset from the oriented image's top edge.
   final int y;
+
+  /// Selected width in source pixels.
   final int width;
+
+  /// Selected height in source pixels.
   final int height;
 }
 
+/// A crop expressed as fractions of the orientation-normalized image.
 final class NormalizedCropRegion extends CropRegion {
+  /// Creates a normalized crop contained inside the `0..1` image space.
   const NormalizedCropRegion({
     required this.left,
     required this.top,
@@ -45,15 +56,25 @@ final class NormalizedCropRegion extends CropRegion {
     required this.height,
   });
 
+  /// Fractional offset from the oriented image's left edge.
   final double left;
+
+  /// Fractional offset from the oriented image's top edge.
   final double top;
+
+  /// Fractional width relative to the oriented image.
   final double width;
+
+  /// Fractional height relative to the oriented image.
   final double height;
 }
 
+/// The largest centered crop with a requested aspect ratio.
 final class CenteredCropRegion extends CropRegion {
+  /// Creates a centered crop with [aspectRatio].
   const CenteredCropRegion({required this.aspectRatio});
 
+  /// Requested width divided by height.
   final double aspectRatio;
 }
 

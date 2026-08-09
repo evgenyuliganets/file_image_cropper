@@ -1,3 +1,12 @@
+## 0.3.2
+
+- Added Swift Package Manager support for the shared iOS and macOS plugin while
+  retaining CocoaPods compatibility.
+- Expanded dartdoc coverage across crop requests, regions, output options, and
+  editor styling APIs.
+- Updated the native-assets build dependencies to their newest versions
+  compatible with the minimum supported Flutter release.
+
 ## 0.3.1
 
 - Reorganized and simplified the README around installation, interactive and

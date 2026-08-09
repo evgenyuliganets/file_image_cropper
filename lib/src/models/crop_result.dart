@@ -2,9 +2,13 @@ import 'dart:io';
 
 /// A completed crop output and its ownership information.
 final class CropResult {
+  /// Creates a completed result for [file] with its ownership state.
   const CropResult({required this.file, required this.isManaged});
 
+  /// Encoded output file.
   final File file;
+
+  /// Whether the package owns this temporary output.
   final bool isManaged;
 
   /// Deletes a package-managed result. Explicit caller-owned outputs are never
