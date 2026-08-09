@@ -1,6 +1,6 @@
 name: file_image_cropper
 description: Fast JPEG, PNG, and WebP cropping with a customizable Flutter UI and multithreaded Rust engine.
-version: 0.3.0
+version: 0.3.1
 homepage: https://pub.dev/packages/file_image_cropper
 repository: https://github.com/evgenyuliganets/file_image_cropper
 issue_tracker: https://github.com/evgenyuliganets/file_image_cropper/issues

@@ -1,3 +1,11 @@
+## 0.3.1
+
+- Reorganized and simplified the README around installation, interactive and
+  code-driven cropping, output configuration, customization, and file
+  lifecycle.
+- Added clearer guidance for free-form selection, fixed aspect ratios, exact
+  output dimensions, and format-specific encoding options.
+
 ## 0.3.0
 
 - Added static HEIC input and inspection on Android 9+, iOS, macOS, Windows,
