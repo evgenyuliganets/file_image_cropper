@@ -523,7 +523,7 @@ final class _DefaultCropperControls extends StatelessWidget {
                       actions.confirm,
                       actions.isProcessing,
                     ) ??
-                    FilledButton(
+                    ElevatedButton(
                       onPressed: actions.confirm,
                       child: Text(confirmLabel),
                     ),

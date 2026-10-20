@@ -315,6 +315,38 @@ void main() {
     expect(find.byTooltip('Edit selection'), findsOneWidget);
   });
 
+  testWidgets('default crop action uses the app ElevatedButton theme', (
+    WidgetTester tester,
+  ) async {
+    const Color buttonColor = Color(0xFF123456);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          elevatedButtonTheme: const ElevatedButtonThemeData(
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll<Color>(buttonColor),
+            ),
+          ),
+        ),
+        home: FileImageCropperPage(
+          input: File('unused.png'),
+          imageInfo: _imageInfo,
+          imageBuilder: (_, _, _) => const ColoredBox(color: Colors.blue),
+        ),
+      ),
+    );
+
+    final Finder buttonFinder = find.widgetWithText(ElevatedButton, 'Crop');
+    final ElevatedButton button = tester.widget<ElevatedButton>(buttonFinder);
+    final ElevatedButtonThemeData theme = ElevatedButtonTheme.of(
+      tester.element(buttonFinder),
+    );
+
+    expect(button.style, isNull);
+    expect(theme.style!.backgroundColor!.resolve(<WidgetState>{}), buttonColor);
+  });
+
   testWidgets('default page avoids system gesture edges', (
     WidgetTester tester,
   ) async {

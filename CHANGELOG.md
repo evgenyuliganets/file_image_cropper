@@ -1,3 +1,8 @@
+## 0.3.6
+
+- Changed the default crop confirmation action to an `ElevatedButton` that
+  inherits the host application's `ElevatedButtonTheme`.
+
 ## 0.3.5
 
 - Kept crop handles fully visible over editor padding while preserving the
