@@ -1,3 +1,9 @@
+## 0.3.3
+
+- Added explicit 16 KB ELF page alignment for the Android HEIC bridge so the
+  plugin is compatible with 16 KB page-size devices even when built with older
+  Android NDK toolchains.
+
 ## 0.3.2
 
 - Added Swift Package Manager support for the shared iOS and macOS plugin while
