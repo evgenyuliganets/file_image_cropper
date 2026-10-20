@@ -275,4 +275,29 @@ void main() {
     expect(viewer.scaleEnabled, isTrue);
     expect(find.byTooltip('Edit selection'), findsOneWidget);
   });
+
+  testWidgets('default page avoids system gesture edges', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            systemGestureInsets: EdgeInsets.only(left: 24, right: 32),
+          ),
+          child: FileImageCropperPage(
+            input: File('unused.png'),
+            imageInfo: _imageInfo,
+            imageBuilder: (_, _, _) => const ColoredBox(color: Colors.blue),
+          ),
+        ),
+      ),
+    );
+
+    final CropEditor editor = tester.widget<CropEditor>(
+      find.byType(CropEditor),
+    );
+    expect(editor.padding, const EdgeInsets.fromLTRB(24, 16, 32, 16));
+    expect(editor.overlayStyle.handleHitSize, 48);
+  });
 }

@@ -1,3 +1,8 @@
+## 0.3.4
+
+- Added safe default crop-editor padding, including Android system gesture
+  insets, and increased drag-handle touch targets to 48 logical pixels.
+
 ## 0.3.3
 
 - Added explicit 16 KB ELF page alignment for the Android HEIC bridge so the

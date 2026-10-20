@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -147,7 +148,7 @@ class FileImageCropperPage extends StatefulWidget {
     this.editorErrorBuilder,
     this.overlayStyle = const CropOverlayStyle(),
     this.showDefaultOverlay = true,
-    this.editorPadding = EdgeInsets.zero,
+    this.editorPadding = const EdgeInsets.all(16),
     this.editorBackgroundColor = Colors.black,
     this.scaffoldBackgroundColor,
     this.controlsPadding = const EdgeInsets.all(16),
@@ -196,6 +197,9 @@ class FileImageCropperPage extends StatefulWidget {
 
   final CropOverlayStyle overlayStyle;
   final bool showDefaultOverlay;
+
+  /// Minimum space around the editor image. Horizontal values are increased
+  /// automatically when Android reserves a wider system-gesture area.
   final EdgeInsets editorPadding;
   final Color editorBackgroundColor;
   final Color? scaffoldBackgroundColor;
@@ -284,6 +288,13 @@ class _FileImageCropperPageState extends State<FileImageCropperPage> {
 
   @override
   Widget build(BuildContext context) {
+    final EdgeInsets systemGestures = MediaQuery.systemGestureInsetsOf(context);
+    final EdgeInsets effectiveEditorPadding = EdgeInsets.fromLTRB(
+      math.max(widget.editorPadding.left, systemGestures.left),
+      widget.editorPadding.top,
+      math.max(widget.editorPadding.right, systemGestures.right),
+      widget.editorPadding.bottom,
+    );
     final CropperPageActions actions = CropperPageActions(
       controller: _controller,
       isProcessing: _isProcessing,
@@ -309,7 +320,7 @@ class _FileImageCropperPageState extends State<FileImageCropperPage> {
           transformationController: _transformationController,
           minScale: widget.minScale,
           maxScale: widget.maxScale,
-          padding: widget.editorPadding,
+          padding: effectiveEditorPadding,
           backgroundColor: widget.editorBackgroundColor,
           overlayStyle: widget.overlayStyle,
           showDefaultOverlay: widget.showDefaultOverlay,

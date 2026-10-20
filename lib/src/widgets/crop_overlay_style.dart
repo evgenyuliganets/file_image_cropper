@@ -24,7 +24,7 @@ final class CropOverlayStyle {
     this.showGrid = true,
     this.handleColor = const Color(0xffffffff),
     this.handleSize = 12,
-    this.handleHitSize = 40,
+    this.handleHitSize = 48,
     this.handleShape = CropHandleShape.square,
   });
 
