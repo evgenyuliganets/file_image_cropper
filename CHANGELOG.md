@@ -1,3 +1,8 @@
+## 0.3.5
+
+- Kept crop handles fully visible over editor padding while preserving the
+  same padded image bounds and crop interaction geometry.
+
 ## 0.3.4
 
 - Added safe default crop-editor padding, including Android system gesture

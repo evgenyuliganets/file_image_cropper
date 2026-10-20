@@ -179,6 +179,45 @@ void main() {
     expect(details!.cropRect.width, closeTo(400, 1e-9));
   });
 
+  testWidgets('overlay paints across padding without changing crop bounds', (
+    WidgetTester tester,
+  ) async {
+    CropEditorOverlayDetails? details;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 400,
+            height: 300,
+            child: CropEditor(
+              input: File('unused.png'),
+              imageInfo: const ImageInfo(
+                width: 360,
+                height: 260,
+                format: ImageFormat.png,
+                orientation: 1,
+              ),
+              padding: const EdgeInsets.all(20),
+              imageBuilder: (_, _, _) => const ColoredBox(color: Colors.blue),
+              overlayBuilder: (_, CropEditorOverlayDetails value) {
+                details = value;
+                return const SizedBox.expand(key: Key('full-overlay'));
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('full-overlay'))),
+      const Size(400, 300),
+    );
+    expect(details!.imageRect, const Rect.fromLTWH(20, 20, 360, 260));
+    expect(details!.cropRect, details!.imageRect);
+  });
+
   testWidgets('page builders can replace every major visual section', (
     WidgetTester tester,
   ) async {

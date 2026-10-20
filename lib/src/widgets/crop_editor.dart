@@ -295,97 +295,97 @@ class _CropEditorState extends State<CropEditor> {
       label: widget.semanticLabel,
       child: ColoredBox(
         color: widget.backgroundColor,
-        child: Padding(
-          padding: widget.padding,
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final Size size = constraints.biggest;
-              if (!size.width.isFinite ||
-                  !size.height.isFinite ||
-                  size.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              final Rect baseImageRect = _containRect(
-                size,
-                Size(
-                  info.orientedWidth.toDouble(),
-                  info.orientedHeight.toDouble(),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final Size viewportSize = constraints.biggest;
+            if (!viewportSize.width.isFinite ||
+                !viewportSize.height.isFinite ||
+                viewportSize.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            final Rect contentRect = Rect.fromLTRB(
+              widget.padding.left,
+              widget.padding.top,
+              viewportSize.width - widget.padding.right,
+              viewportSize.height - widget.padding.bottom,
+            );
+            if (contentRect.isEmpty) return const SizedBox.shrink();
+            final Size contentSize = contentRect.size;
+            final Rect baseImageRect = _containRect(
+              contentSize,
+              Size(
+                info.orientedWidth.toDouble(),
+                info.orientedHeight.toDouble(),
+              ),
+            );
+            final Rect imageRect = _transformRect(
+              baseImageRect,
+              _transformationController.value,
+              widget.transformationAlignment,
+              contentSize,
+            ).shift(contentRect.topLeft);
+            final Rect cropRect = _transformRect(
+              _rectForRegion(baseImageRect, _controller.region),
+              _transformationController.value,
+              widget.transformationAlignment,
+              contentSize,
+            ).shift(contentRect.topLeft);
+            final CropEditorOverlayDetails overlayDetails =
+                CropEditorOverlayDetails(
+                  imageRect: imageRect,
+                  cropRect: cropRect,
+                  region: _controller.region,
+                  style: widget.overlayStyle,
+                );
+            final Widget imageCanvas = Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Positioned.fromRect(
+                  rect: baseImageRect,
+                  child:
+                      widget.imageBuilder?.call(context, widget.input, info) ??
+                      Image.file(
+                        widget.input,
+                        fit: BoxFit.fill,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.high,
+                      ),
                 ),
-              );
-              final Rect imageRect = _transformRect(
-                baseImageRect,
-                _transformationController.value,
-                widget.transformationAlignment,
-                size,
-              );
-              final Rect cropRect = _transformRect(
-                _rectForRegion(baseImageRect, _controller.region),
-                _transformationController.value,
-                widget.transformationAlignment,
-                size,
-              );
-              final CropEditorOverlayDetails overlayDetails =
-                  CropEditorOverlayDetails(
-                    imageRect: imageRect,
-                    cropRect: cropRect,
-                    region: _controller.region,
-                    style: widget.overlayStyle,
-                  );
-              final Widget imageCanvas = Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  Positioned.fromRect(
-                    rect: baseImageRect,
-                    child:
-                        widget.imageBuilder?.call(
-                          context,
-                          widget.input,
-                          info,
-                        ) ??
-                        Image.file(
-                          widget.input,
-                          fit: BoxFit.fill,
-                          gaplessPlayback: true,
-                          filterQuality: FilterQuality.high,
-                        ),
-                  ),
-                ],
-              );
-              final Widget selectionLayer = IgnorePointer(
-                ignoring:
-                    !widget.enabled ||
-                    widget.interactionMode ==
-                        CropEditorInteractionMode.panAndZoom,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  dragStartBehavior: DragStartBehavior.down,
-                  onPanStart: (DragStartDetails details) =>
-                      _startDrag(details, imageRect, cropRect),
-                  onPanUpdate: _updateDrag,
-                  onPanEnd: (_) => _endDrag(),
-                  onPanCancel: _endDrag,
-                  onDoubleTap: _resetEditor,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      if (widget.showDefaultOverlay)
-                        CustomPaint(
-                          painter: _CropOverlayPainter(overlayDetails),
-                        ),
-                      if (widget.overlayBuilder case final builder?)
-                        Positioned.fill(
-                          child: builder(context, overlayDetails),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-              return ClipRect(
-                clipBehavior: widget.clipBehavior,
+              ],
+            );
+            final Widget selectionLayer = IgnorePointer(
+              ignoring:
+                  !widget.enabled ||
+                  widget.interactionMode ==
+                      CropEditorInteractionMode.panAndZoom,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                dragStartBehavior: DragStartBehavior.down,
+                onPanStart: (DragStartDetails details) =>
+                    _startDrag(details, imageRect, cropRect),
+                onPanUpdate: _updateDrag,
+                onPanEnd: (_) => _endDrag(),
+                onPanCancel: _endDrag,
+                onDoubleTap: _resetEditor,
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    InteractiveViewer(
+                    if (widget.showDefaultOverlay)
+                      CustomPaint(painter: _CropOverlayPainter(overlayDetails)),
+                    if (widget.overlayBuilder case final builder?)
+                      Positioned.fill(child: builder(context, overlayDetails)),
+                  ],
+                ),
+              ),
+            );
+            return ClipRect(
+              clipBehavior: widget.clipBehavior,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Positioned.fromRect(
+                    rect: contentRect,
+                    child: InteractiveViewer(
                       transformationController: _transformationController,
                       panEnabled:
                           widget.enabled &&
@@ -411,12 +411,12 @@ class _CropEditorState extends State<CropEditor> {
                       clipBehavior: Clip.none,
                       child: imageCanvas,
                     ),
-                    selectionLayer,
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                  selectionLayer,
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

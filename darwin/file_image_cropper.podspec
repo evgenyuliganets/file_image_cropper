@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'file_image_cropper'
-  s.version          = '0.3.4'
+  s.version          = '0.3.5'
   s.summary          = 'System HEIC decoder bridge for file_image_cropper.'
   s.description      = 'Decodes HEIC with Apple ImageIO/Core Image and passes RGBA memory directly to Rust.'
   s.homepage         = 'https://github.com/evgenyuliganets/file_image_cropper'
