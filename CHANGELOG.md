@@ -1,3 +1,8 @@
+## 0.3.7
+
+- Fixed the Darwin HEIC bridge header import when Flutter builds the plugin
+  with Swift Package Manager.
+
 ## 0.3.6
 
 - Changed the default crop confirmation action to an `ElevatedButton` that

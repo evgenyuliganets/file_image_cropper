@@ -71,6 +71,21 @@ void main() {
     expect(await isHeicFile(input), isTrue);
   });
 
+  test('Darwin bridge header import resolves inside its SwiftPM target', () {
+    final File source = File(
+      'darwin/file_image_cropper/Sources/file_image_cropper_bridge/heic_bridge.m',
+    );
+    final Match? import = RegExp(
+      '#import "([^"]*heic_bridge\\.h)"',
+    ).firstMatch(source.readAsStringSync());
+
+    expect(import, isNotNull);
+    expect(
+      File('${source.parent.path}/${import!.group(1)}').existsSync(),
+      isTrue,
+    );
+  });
+
   test('missing desktop bridge returns actionable HEIC guidance', () async {
     if (!Platform.isWindows && !Platform.isLinux) return;
     final File input = File('${temporary.path}/photo.heic');
